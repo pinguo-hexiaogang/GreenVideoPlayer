@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="PlayerView">
+        <attr name="surfaceType" format="enum">
+            <enum name="none" value="0" />
+            <enum name="surface" value="1" />
+            <enum name="texture" value="2" />
+        </attr>
+        <attr name="fillType" format="enum">
+            <enum name="fit" value="0" />
+            <enum name="fill" value="1" />
+        </attr>
+        <attr name="useController" format="boolean" />
+    </declare-styleable>
+
+    <style name="Theme.AppCompat.Light.NoActionBar.FullScreen" parent="@style/Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
+</resources>
