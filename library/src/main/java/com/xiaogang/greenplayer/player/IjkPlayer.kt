@@ -7,17 +7,16 @@ import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.TextureView
-import com.xiaogang.greenplayer.EventListener
-import com.xiaogang.greenplayer.PlaybackInfo
-import com.xiaogang.greenplayer.Player
-import com.xiaogang.greenplayer.VideoListener
+import com.xiaogang.greenplayer.*
 import tv.danmaku.ijk.media.player.IMediaPlayer
 import tv.danmaku.ijk.media.player.IjkMediaPlayer
 import java.lang.Exception
 import java.lang.IllegalArgumentException
 import java.util.concurrent.CopyOnWriteArrayList
 
-class IjkPlayer : Player {
+class IjkPlayer(private val appContext: Context) : Player, PlayerAudioFocusManager.FocusLostListener {
+
+
     private val ijkMediaPlayer: IjkMediaPlayer = IjkMediaPlayer()
     private val ijkListener = IjkListener()
     private var playbackInfo = PlaybackInfo()
@@ -28,6 +27,7 @@ class IjkPlayer : Player {
     private var uri: Uri? = null
     private var videoListeners = CopyOnWriteArrayList<VideoListener>()
     private var eventListeners = CopyOnWriteArrayList<EventListener>()
+    private val audioFocusManager = PlayerAudioFocusManager(appContext, this)
 
     init {
         ijkMediaPlayer.setOnPreparedListener(ijkListener)
@@ -86,7 +86,7 @@ class IjkPlayer : Player {
     }
 
     override fun addVideoListener(videoListener: VideoListener) {
-        if(!videoListeners.contains(videoListener)) {
+        if (!videoListeners.contains(videoListener)) {
             videoListeners.add(videoListener)
         }
     }
@@ -99,13 +99,22 @@ class IjkPlayer : Player {
         playbackInfo.playWhenReady = playWhenReady
         if (playbackInfo.state == Player.STATE_READY || playbackInfo.state == Player.STATE_BUFFING) {
             if (playbackInfo.playWhenReady) {
-                ijkMediaPlayer.start()
+                if (audioFocusManager.requestFocus()) {
+                    ijkMediaPlayer.start()
+                } else {
+                    playbackInfo.playWhenReady = false
+                }
             } else {
                 ijkMediaPlayer.pause()
+                audioFocusManager.abadonFoucs()
             }
         } else if (playbackInfo.state == Player.STATE_END) {
             if (playWhenReady) {
-                ijkMediaPlayer.start()
+                if (audioFocusManager.requestFocus()) {
+                    ijkMediaPlayer.start()
+                } else {
+                    playbackInfo.playWhenReady = false
+                }
             }
         } else {
             if (uri != null && playWhenReady) {
@@ -137,7 +146,7 @@ class IjkPlayer : Player {
     }
 
     override fun addEventListener(listener: EventListener) {
-        if(!eventListeners.contains(listener)) {
+        if (!eventListeners.contains(listener)) {
             eventListeners.add(listener)
         }
     }
@@ -157,10 +166,15 @@ class IjkPlayer : Player {
     }
 
     override fun release() {
+        playbackInfo.state = Player.STATE_IDLE
+        dispatchStateChange()
         surfaceView?.holder?.removeCallback(surfaceListener)
         textureView?.surfaceTextureListener = null
         surfaceView = null
         textureView = null
+        eventListeners.clear()
+        videoListeners.clear()
+        audioFocusManager.abadonFoucs()
         ijkMediaPlayer.setSurface(null)
         ijkMediaPlayer.release()
     }
@@ -187,7 +201,11 @@ class IjkPlayer : Player {
         override fun onPrepared(p0: IMediaPlayer?) {
             playbackInfo.state = Player.STATE_READY
             if (playbackInfo.playWhenReady) {
-                ijkMediaPlayer.start()
+                if (audioFocusManager.requestFocus()) {
+                    ijkMediaPlayer.start()
+                } else {
+                    playbackInfo.playWhenReady = false
+                }
             }
             dispatchStateChange()
         }
@@ -301,5 +319,9 @@ class IjkPlayer : Player {
 
     override fun videoHeight(): Int {
         return ijkMediaPlayer.videoHeight
+    }
+
+    override fun onFocusLost() {
+        setPlayWhenReady(false)
     }
 }

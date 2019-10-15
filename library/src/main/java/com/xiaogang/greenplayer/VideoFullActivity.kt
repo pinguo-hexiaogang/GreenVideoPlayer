@@ -10,8 +10,12 @@ import kotlinx.android.synthetic.main.green_full_layout.*
 class VideoFullActivity : AppCompatActivity() {
     companion object {
         private var playerView: PlayerView? = null
+        private var player:Player? = null
         fun startFull(context: Context, playerView: PlayerView?) {
             this.playerView = playerView
+            this.player = playerView?.getPlayer()
+            //这里要首先设置为null，否则全屏会导致界面生命周期变化，导致视频暂停之类的问题。
+            this.playerView?.setPlayer(null)
             val intent = Intent(context, VideoFullActivity::class.java)
             context.startActivity(intent)
         }
@@ -24,10 +28,17 @@ class VideoFullActivity : AppCompatActivity() {
         if (playerView == null) {
             finish()
         } else {
-            PlayerView.switchTarget(playerView, player_view)
+            player_view.setPlayer(player)
         }
         if (!isVerticalVideo()) {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if(!isFinishing) {
+            player_view.getPlayer()?.setPlayWhenReady(false)
         }
     }
 

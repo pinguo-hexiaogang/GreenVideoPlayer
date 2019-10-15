@@ -133,6 +133,11 @@ class PlayerView : FrameLayout, VideoListener, EventListener {
             } else if (surfaceView is TextureView) {
                 innerPlayer?.setTextureView(surfaceView as TextureView)
             }
+            if (this.innerPlayer != null && this.innerPlayer?.videoWidth() ?: 0 > 0) {
+                val videoWidth = this.innerPlayer?.videoWidth() ?: 0
+                val videoHeight = this.innerPlayer?.videoHeight() ?: 1
+                content.videoRation = videoWidth * 1f / videoHeight
+            }
         }
 
     }
