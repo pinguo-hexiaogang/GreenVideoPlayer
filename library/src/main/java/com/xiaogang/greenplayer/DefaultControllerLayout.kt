@@ -6,6 +6,7 @@ import android.os.Looper
 import android.util.AttributeSet
 import android.view.View
 import android.widget.SeekBar
+import com.xiaogang.greenplayer.ui.GestureDetector
 import com.xiaogang.greenplayer.utils.Util
 import com.xiaogang.greenplayer.utils.toMiniteSeconds
 import kotlinx.android.synthetic.main.green_controller_layout.view.*
@@ -14,20 +15,35 @@ open class DefaultControllerLayout @JvmOverloads constructor(
     context: Context?,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : BaseController(context, attrs, defStyleAttr), EventListener {
+) : BaseController(context, attrs, defStyleAttr), EventListener, GestureDetector.TapListener {
+
     private val handlerMain = Handler(Looper.getMainLooper())
     private val checkProgressRunnable = CheckProgressRunnable(false)
     private var playerView: PlayerView? = null
+    private val hideControllerRunnable = HideControllerRunnable()
 
+    /**
+     * 本来可以不用有这个变量的。但是全屏切换有可能导致eventListener没有remove掉`
+     */
+    private var player: Player? = null
+
+    init {
+        showController(true)
+    }
 
     override fun setPlayerView(playerView: PlayerView) {
+        this.player?.removeEventListener(this)
         this.playerView?.getPlayer()?.removeEventListener(this)
         this.playerView = playerView
         this.playerView?.getPlayer()?.addEventListener(this)
+        this.player = playerView.getPlayer()
         if (this.playerView?.getPlayer() != null) {
             restoreUiStatus()
+        } else {
+            stopUpdateProgress()
         }
         updateFullState()
+        checkHideControllerContainer()
     }
 
     /**
@@ -50,8 +66,10 @@ open class DefaultControllerLayout @JvmOverloads constructor(
 
     override fun onFinishInflate() {
         super.onFinishInflate()
+        GestureDetector(this, this)
         status_imv.setOnClickListener {
-            playerView?.getPlayer()?.setPlayWhenReady(!(playerView?.getPlayer()?.getPlayWhenReady() ?: false))
+            playerView?.getPlayer()
+                ?.setPlayWhenReady(!(playerView?.getPlayer()?.getPlayWhenReady() ?: false))
         }
         progress.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
@@ -79,6 +97,11 @@ open class DefaultControllerLayout @JvmOverloads constructor(
             }
         }
         updateFullState()
+
+    }
+
+    private fun isControllerContainerShow(): Boolean {
+        return controller_container?.visibility == View.VISIBLE
     }
 
     private fun updateFullState() {
@@ -91,6 +114,7 @@ open class DefaultControllerLayout @JvmOverloads constructor(
         super.onDetachedFromWindow()
         playerView?.getPlayer()?.removeEventListener(this)
         stopUpdateProgress()
+        removeHideRunnable()
     }
 
     private fun setStatusResource(changeToPause: Boolean) {
@@ -126,6 +150,8 @@ open class DefaultControllerLayout @JvmOverloads constructor(
         if (playWhenReady) {
             startUpdateProgress()
         } else {
+            removeHideRunnable()
+            showController(true)
             stopUpdateProgress()
         }
         when (state) {
@@ -133,18 +159,56 @@ open class DefaultControllerLayout @JvmOverloads constructor(
                 changeStatusVisibility(true)
                 setStatusResource(false)
                 stopUpdateProgress()
+                removeHideRunnable()
+                showController(true)
             }
             Player.STATE_READY -> {
                 changeStatusVisibility(true)
                 setTotalTime()
+                scheduleHideRunnable()
             }
             Player.STATE_IDLE -> {
                 changeStatusVisibility(true)
+                setStatusResource(false)
+                stopUpdateProgress()
+                removeHideRunnable()
+                showController(true)
             }
             Player.STATE_BUFFING -> {
                 //此时需要show buffing
                 changeStatusVisibility(false)
             }
+        }
+    }
+
+    private fun checkHideControllerContainer() {
+        if (playerView?.getPlayer()?.getPlayWhenReady() == true
+            && (playerView?.getPlayer()?.getPlaybackState() == Player.STATE_READY
+                    || playerView?.getPlayer()?.getPlaybackState() == Player.STATE_BUFFING)
+        ) {
+            showController(false)
+        } else {
+            showController(true)
+        }
+    }
+
+    private fun scheduleHideRunnable() {
+        if (playerView?.getPlayer()?.getPlayWhenReady() == false
+            || playerView?.getPlayer()?.getPlaybackState() == Player.STATE_END
+            || playerView?.getPlayer()?.getPlaybackState() == Player.STATE_IDLE
+        ) {
+            return
+        }
+        handlerMain.postDelayed(hideControllerRunnable, 2000)
+    }
+
+    private fun removeHideRunnable() {
+        handlerMain.removeCallbacks(hideControllerRunnable)
+    }
+
+    private inner class HideControllerRunnable : Runnable {
+        override fun run() {
+            showController(false)
         }
     }
 
@@ -178,7 +242,32 @@ open class DefaultControllerLayout @JvmOverloads constructor(
         }
     }
 
-    override fun onPlayError(e: Exception?) {
-        //TODO
+    private fun showController(show: Boolean) {
+        controller_container?.visibility = if (show) View.VISIBLE else View.INVISIBLE
     }
+
+    override fun onPlayError(e: Exception?) {
+        showController(true)
+        changeStatusVisibility(true)
+        setStatusResource(false)
+        stopUpdateProgress()
+    }
+
+    override fun onSingleTapUp(): Boolean {
+        if (isControllerContainerShow()) {
+            showController(false)
+        } else {
+            removeHideRunnable()
+            showController(true)
+            scheduleHideRunnable()
+        }
+        return true
+    }
+
+    override fun onDoubleTapUp(): Boolean {
+        playerView?.getPlayer()
+            ?.setPlayWhenReady(!(playerView?.getPlayer()?.getPlayWhenReady() ?: false))
+        return true
+    }
+
 }

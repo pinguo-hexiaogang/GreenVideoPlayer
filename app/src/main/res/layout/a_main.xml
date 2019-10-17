@@ -1,10 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
-    <com.xiaogang.greenplayer.PlayerView
-        android:id="@+id/player_view"
+    <Button
+        android:id="@+id/simple_video"
         android:layout_width="match_parent"
-        android:layout_height="200dp" />
-</android.support.constraint.ConstraintLayout>
+        android:layout_height="wrap_content"
+        android:text="simple video"
+        android:textColor="@android:color/black"
+        android:textSize="15sp" />
+
+    <Button
+        android:id="@+id/viewpager_video"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="viewpager video"
+        android:textColor="@android:color/black"
+        android:textSize="15sp" />
+</LinearLayout>

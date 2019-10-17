@@ -8,13 +8,15 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.TextureView
 import com.xiaogang.greenplayer.*
+import com.xiaogang.greenplayer.utils.LogDebug
 import tv.danmaku.ijk.media.player.IMediaPlayer
 import tv.danmaku.ijk.media.player.IjkMediaPlayer
 import java.lang.Exception
 import java.lang.IllegalArgumentException
 import java.util.concurrent.CopyOnWriteArrayList
 
-class IjkPlayer(private val appContext: Context) : Player, PlayerAudioFocusManager.FocusLostListener {
+class IjkPlayer(private val appContext: Context) : Player,
+    PlayerAudioFocusManager.FocusLostListener {
 
 
     private val ijkMediaPlayer: IjkMediaPlayer = IjkMediaPlayer()
@@ -28,6 +30,10 @@ class IjkPlayer(private val appContext: Context) : Player, PlayerAudioFocusManag
     private var videoListeners = CopyOnWriteArrayList<VideoListener>()
     private var eventListeners = CopyOnWriteArrayList<EventListener>()
     private val audioFocusManager = PlayerAudioFocusManager(appContext, this)
+
+    companion object {
+        const val TAG = "IjkPlayer"
+    }
 
     init {
         ijkMediaPlayer.setOnPreparedListener(ijkListener)
@@ -60,7 +66,9 @@ class IjkPlayer(private val appContext: Context) : Player, PlayerAudioFocusManag
         textureView.surfaceTextureListener = surfaceListener
         surfaceView?.holder?.removeCallback(surfaceListener)
         surfaceView = null
+        LogDebug.d(TAG, "setTExtureView,isAvailable:${textureView.isAvailable}")
         if (textureView.isAvailable) {
+            LogDebug.d("player", "textureview available,set surface")
             ijkMediaPlayer.setSurface(Surface(textureView.surfaceTexture))
         } else {
             ijkMediaPlayer.setSurface(null)
@@ -167,6 +175,7 @@ class IjkPlayer(private val appContext: Context) : Player, PlayerAudioFocusManag
 
     override fun release() {
         playbackInfo.state = Player.STATE_IDLE
+        playbackInfo.playWhenReady = false
         dispatchStateChange()
         surfaceView?.holder?.removeCallback(surfaceListener)
         textureView?.surfaceTextureListener = null

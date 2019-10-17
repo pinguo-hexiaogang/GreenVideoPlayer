@@ -5,6 +5,7 @@ import android.util.AttributeSet
 import android.view.*
 import android.widget.FrameLayout
 import com.xiaogang.greenplayer.ui.PlayerViewContentLayout
+import com.xiaogang.greenplayer.utils.LogDebug
 import kotlinx.android.synthetic.main.green_player_view.view.*
 import java.lang.Exception
 
@@ -15,6 +16,7 @@ class PlayerView : FrameLayout, VideoListener, EventListener {
         const val SURFACE_TYPE_NONE = 0
         const val SURFACE_TYPE_SURFACE_VIEW = 1
         const val SURFACE_TYPE_TEXTURE_VIEW = 2
+        const val TAG = "PlayerView"
 
         fun switchTarget(from: PlayerView?, to: PlayerView?) {
             val player = from?.innerPlayer
@@ -64,6 +66,7 @@ class PlayerView : FrameLayout, VideoListener, EventListener {
         surfaceView = addSurface()
 
     }
+
 
     fun useController(use: Boolean) {
         this.userController = use
@@ -123,14 +126,18 @@ class PlayerView : FrameLayout, VideoListener, EventListener {
                 innerPlayer?.clearVideoTextureView(surfaceView as TextureView)
             }
 
+
             innerPlayer = player
             innerPlayer?.addEventListener(this)
             innerPlayer?.addVideoListener(this)
             innerController?.setPlayerView(this)
-
+            if (surfaceView == null && innerPlayer != null) {
+                surfaceView = addSurface()
+            }
             if (surfaceView is SurfaceView) {
                 innerPlayer?.setSurfaceView(surfaceView as SurfaceView)
             } else if (surfaceView is TextureView) {
+                LogDebug.d(TAG, "setTextureView")
                 innerPlayer?.setTextureView(surfaceView as TextureView)
             }
             if (this.innerPlayer != null && this.innerPlayer?.videoWidth() ?: 0 > 0) {
@@ -140,6 +147,18 @@ class PlayerView : FrameLayout, VideoListener, EventListener {
             }
         }
 
+    }
+
+    /**
+     * 调用player的release方法；remove surfaceView
+     */
+    fun release() {
+        innerPlayer?.release()
+        setPlayer(null)
+        if (surfaceView != null) {
+            content.removeView(surfaceView)
+        }
+        surfaceView = null
     }
 
     fun getPlayer(): Player? = innerPlayer
